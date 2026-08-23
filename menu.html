@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catering Hub - Menu &amp; Packages</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="logo">Catering Hub</div>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="menu.html" class="active">Menu &amp; Packages</a></li>
+    <li><a href="order.html">Order</a></li>
+    <li><a href="admin-login.html">Admin</a></li>
+  </ul>
+</nav>
+
+<section class="section">
+  <h2 class="section-title">Menu Items</h2>
+  <div class="filter-bar" id="filter-bar">
+    <button class="active" data-cat="all">All</button>
+  </div>
+  <div class="card-grid" id="food-grid"></div>
+</section>
+
+<section class="section" style="background-color:#f4ead3;">
+  <h2 class="section-title">Catering Packages</h2>
+  <div class="card-grid" id="package-grid"></div>
+</section>
+
+<footer>
+  <p>Catering Hub &copy; 2026 | Contact: info@cateringhub.com | +92 300 0000000</p>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  // Food item images aren't stored in the database, so we map them by name here.
+  const FOOD_IMAGES = {
+    "Garden Salad": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80",
+    "Grilled Chicken": "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=500&q=80",
+    "Creamy Pasta": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=500&q=80",
+    "Chocolate Brownie": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=500&q=80",
+    "Iced Lemon Tea": "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?auto=format&fit=crop&w=500&q=80"
+  };
+  const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80";
+
+  fetchCategories().then(categories => {
+    const filterBar = document.getElementById("filter-bar");
+    categories.forEach(cat => {
+      filterBar.innerHTML += `<button data-cat="${cat.CategoryID}">${cat.Name}</button>`;
+    });
+  });
+
+  function renderFood(categoryId) {
+    const foodGrid = document.getElementById("food-grid");
+    fetchFoodItems(categoryId)
+      .then(items => {
+        foodGrid.innerHTML = items.map(item => `
+          <div class="card">
+            <img src="${FOOD_IMAGES[item.Name] || FALLBACK_IMAGE}" alt="${item.Name}">
+            <div class="card-body">
+              <h3>${item.Name}</h3>
+              <p>${item.Description}</p>
+              <div class="price">$${item.Price}</div>
+              <a href="order.html?item=${item.FoodItemID}" class="btn btn-primary">Add to Order</a>
+            </div>
+          </div>`).join("");
+      })
+      .catch(err => {
+        foodGrid.innerHTML = `<p>Could not load menu items.</p>`;
+        console.error(err);
+      });
+  }
+
+  document.getElementById("filter-bar").addEventListener("click", e => {
+    if (e.target.tagName !== "BUTTON") return;
+    document.querySelectorAll("#filter-bar button").forEach(b => b.classList.remove("active"));
+    e.target.classList.add("active");
+    renderFood(e.target.dataset.cat);
+  });
+
+  renderFood("all");
+
+  const packageGrid = document.getElementById("package-grid");
+  const PACKAGE_IMAGES = {
+    "Bronze Package": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=500&q=80",
+    "Silver Package": "https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=500&q=80",
+    "Gold Package": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=500&q=80"
+  };
+  fetchPackages().then(packages => {
+    packageGrid.innerHTML = packages.map(pkg => `
+      <div class="card">
+        <img src="${PACKAGE_IMAGES[pkg.Name] || FALLBACK_IMAGE}" alt="${pkg.Name}">
+        <div class="card-body">
+          <h3>${pkg.Name}</h3>
+          <p>${pkg.Description}</p>
+          <div class="price">$${pkg.Price}</div>
+          <a href="order.html?package=${pkg.PackageID}" class="btn btn-primary">Select Package</a>
+        </div>
+      </div>`).join("");
+  });
+</script>
+</body>
+</html>

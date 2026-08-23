@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catering Hub - Admin Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="logo">Catering Admin</div>
+    <ul>
+      <li><a href="#dashboard" class="active">Dashboard</a></li>
+      <li><a href="#food-items-section">Food Items</a></li>
+      <li><a href="#packages-section">Packages</a></li>
+      <li><a href="#orders-section">Orders</a></li>
+      <li><a href="#" id="logout-link">Log Out</a></li>
+    </ul>
+  </aside>
+
+  <main class="admin-main">
+    <h2 id="dashboard">Welcome back, Administrator</h2>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="value" id="stat-fooditems">0</div><div class="label">Food Items</div></div>
+      <div class="stat-card"><div class="value" id="stat-packages">0</div><div class="label">Packages</div></div>
+      <div class="stat-card"><div class="value" id="stat-orders">0</div><div class="label">New Orders</div></div>
+      <div class="stat-card"><div class="value" id="stat-pending">0</div><div class="label">Pending Orders</div></div>
+    </div>
+
+    <!-- ============ FOOD ITEMS ============ -->
+    <h3 id="food-items-section" style="margin-bottom:14px;">Manage Food Items</h3>
+
+    <form id="food-form" class="form-wrapper" style="margin-bottom:20px;">
+      <input type="hidden" id="food-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="food-name" required>
+        </div>
+        <div class="form-group">
+          <label>Price ($)</label>
+          <input type="number" step="0.01" id="food-price" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="food-category" required></select>
+        </div>
+        <div class="form-group">
+          <label>Available</label>
+          <select id="food-availability">
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="food-description" rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" id="food-submit-btn">Add Food Item</button>
+      <button type="button" class="btn btn-outline" id="food-cancel-btn" style="display:none; color:var(--primary-green); border-color:var(--primary-green);">Cancel Edit</button>
+    </form>
+
+    <table id="fooditems-table" style="margin-bottom:40px;">
+      <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Available</th><th>Actions</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- ============ PACKAGES ============ -->
+    <h3 id="packages-section" style="margin-bottom:14px;">Manage Catering Packages</h3>
+
+    <form id="package-form" class="form-wrapper" style="margin-bottom:20px;">
+      <input type="hidden" id="package-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="package-name" required>
+        </div>
+        <div class="form-group">
+          <label>Price ($)</label>
+          <input type="number" step="0.01" id="package-price" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="package-description" rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" id="package-submit-btn">Add Package</button>
+      <button type="button" class="btn btn-outline" id="package-cancel-btn" style="display:none; color:var(--primary-green); border-color:var(--primary-green);">Cancel Edit</button>
+    </form>
+
+    <table id="packages-table" style="margin-bottom:40px;">
+      <thead><tr><th>Name</th><th>Price</th><th>Available</th><th>Actions</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- ============ ORDERS ============ -->
+    <h3 id="orders-section" style="margin-bottom:14px;">Recent Orders</h3>
+    <table id="orders-table">
+      <thead>
+        <tr><th>ID</th><th>Customer</th><th>Event Date</th><th>Guests</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  requireAdminLogin();
+
+  document.getElementById("logout-link").addEventListener("click", () => {
+    sessionStorage.removeItem("isAdmin");
+    window.location.href = "admin-login.html";
+  });
+
+  function statusClass(status) {
+    return { Pending: "status-pending", Confirmed: "status-confirmed",
+             Completed: "status-completed", Cancelled: "status-cancelled" }[status] || "status-pending";
+  }
+
+  /* ---------------- Orders ---------------- */
+  const ordersTbody = document.querySelector("#orders-table tbody");
+
+  function renderOrders() {
+    fetchOrders().then(orders => {
+      document.getElementById("stat-orders").textContent = orders.length;
+      document.getElementById("stat-pending").textContent = orders.filter(o => o.Status === "Pending").length;
+
+      ordersTbody.innerHTML = orders.length ? "" : `<tr><td colspan="6">No orders yet.</td></tr>`;
+      orders.forEach(o => {
+        ordersTbody.innerHTML += `
+          <tr>
+            <td>ORD-${o.OrderID}</td>
+            <td>${o.CustomerName}</td>
+            <td>${new Date(o.EventDate).toLocaleDateString()}</td>
+            <td>${o.GuestCount}</td>
+            <td><span class="status ${statusClass(o.Status)}">${o.Status}</span></td>
+            <td>
+              <select onchange="changeStatus(${o.OrderID}, this.value)">
+                <option ${o.Status === "Pending" ? "selected" : ""}>Pending</option>
+                <option ${o.Status === "Confirmed" ? "selected" : ""}>Confirmed</option>
+                <option ${o.Status === "Completed" ? "selected" : ""}>Completed</option>
+                <option ${o.Status === "Cancelled" ? "selected" : ""}>Cancelled</option>
+              </select>
+            </td>
+          </tr>`;
+      });
+    });
+  }
+
+  function changeStatus(id, status) {
+    setOrderStatus(id, status).then(() => renderOrders());
+  }
+
+  /* ---------------- Food Items ---------------- */
+  const foodForm = document.getElementById("food-form");
+  const foodTbody = document.querySelector("#fooditems-table tbody");
+  let categoriesCache = [];
+
+  function renderFoodItems() {
+    fetchFoodItems().then(items => {
+      document.getElementById("stat-fooditems").textContent = items.length;
+      foodTbody.innerHTML = items.length ? "" : `<tr><td colspan="5">No food items yet.</td></tr>`;
+      items.forEach(item => {
+        const catName = (categoriesCache.find(c => c.CategoryID === item.CategoryID) || {}).Name || "-";
+        foodTbody.innerHTML += `
+          <tr>
+            <td>${item.Name}</td>
+            <td>${catName}</td>
+            <td>$${item.Price}</td>
+            <td>${item.Availability ? "Yes" : "No"}</td>
+            <td>
+              <button class="btn btn-outline" style="padding:6px 12px; color:var(--primary-green); border-color:var(--primary-green);" onclick='editFoodItem(${JSON.stringify(item)})'>Edit</button>
+              <button class="btn btn-outline" style="padding:6px 12px; color:#b3261e; border-color:#b3261e;" onclick="removeFoodItem(${item.FoodItemID})">Delete</button>
+            </td>
+          </tr>`;
+      });
+    });
+  }
+
+  function editFoodItem(item) {
+    document.getElementById("food-id").value = item.FoodItemID;
+    document.getElementById("food-name").value = item.Name;
+    document.getElementById("food-price").value = item.Price;
+    document.getElementById("food-category").value = item.CategoryID;
+    document.getElementById("food-availability").value = item.Availability ? "1" : "0";
+    document.getElementById("food-description").value = item.Description || "";
+    document.getElementById("food-submit-btn").textContent = "Update Food Item";
+    document.getElementById("food-cancel-btn").style.display = "inline-block";
+    foodForm.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function resetFoodForm() {
+    foodForm.reset();
+    document.getElementById("food-id").value = "";
+    document.getElementById("food-submit-btn").textContent = "Add Food Item";
+    document.getElementById("food-cancel-btn").style.display = "none";
+  }
+
+  document.getElementById("food-cancel-btn").addEventListener("click", resetFoodForm);
+
+  function removeFoodItem(id) {
+    if (!confirm("Delete this food item?")) return;
+    deleteFoodItem(id).then(renderFoodItems).catch(err => alert(err.message));
+  }
+
+  foodForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const id = document.getElementById("food-id").value;
+    const payload = {
+      name: document.getElementById("food-name").value,
+      price: document.getElementById("food-price").value,
+      categoryId: document.getElementById("food-category").value,
+      description: document.getElementById("food-description").value,
+      availability: document.getElementById("food-availability").value === "1"
+    };
+    const action = id ? updateFoodItem(id, payload) : addFoodItem(payload);
+    action.then(() => { resetFoodForm(); renderFoodItems(); }).catch(err => alert(err.message));
+  });
+
+  /* ---------------- Packages ---------------- */
+  const packageForm = document.getElementById("package-form");
+  const packageTbody = document.querySelector("#packages-table tbody");
+
+  function renderPackages() {
+    fetchPackages().then(packages => {
+      document.getElementById("stat-packages").textContent = packages.length;
+      packageTbody.innerHTML = packages.length ? "" : `<tr><td colspan="4">No packages yet.</td></tr>`;
+      packages.forEach(pkg => {
+        packageTbody.innerHTML += `
+          <tr>
+            <td>${pkg.Name}</td>
+            <td>$${pkg.Price}</td>
+            <td>${pkg.Availability ? "Yes" : "No"}</td>
+            <td>
+              <button class="btn btn-outline" style="padding:6px 12px; color:var(--primary-green); border-color:var(--primary-green);" onclick='editPackage(${JSON.stringify(pkg)})'>Edit</button>
+              <button class="btn btn-outline" style="padding:6px 12px; color:#b3261e; border-color:#b3261e;" onclick="removePackage(${pkg.PackageID})">Delete</button>
+            </td>
+          </tr>`;
+      });
+    });
+  }
+
+  function editPackage(pkg) {
+    document.getElementById("package-id").value = pkg.PackageID;
+    document.getElementById("package-name").value = pkg.Name;
+    document.getElementById("package-price").value = pkg.Price;
+    document.getElementById("package-description").value = pkg.Description || "";
+    document.getElementById("package-submit-btn").textContent = "Update Package";
+    document.getElementById("package-cancel-btn").style.display = "inline-block";
+    packageForm.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function resetPackageForm() {
+    packageForm.reset();
+    document.getElementById("package-id").value = "";
+    document.getElementById("package-submit-btn").textContent = "Add Package";
+    document.getElementById("package-cancel-btn").style.display = "none";
+  }
+
+  document.getElementById("package-cancel-btn").addEventListener("click", resetPackageForm);
+
+  function removePackage(id) {
+    if (!confirm("Delete this package?")) return;
+    deletePackage(id).then(renderPackages).catch(err => alert(err.message));
+  }
+
+  packageForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const id = document.getElementById("package-id").value;
+    const payload = {
+      name: document.getElementById("package-name").value,
+      price: document.getElementById("package-price").value,
+      description: document.getElementById("package-description").value,
+      availability: true
+    };
+    const action = id ? updatePackage(id, payload) : addPackage(payload);
+    action.then(() => { resetPackageForm(); renderPackages(); }).catch(err => alert(err.message));
+  });
+
+  /* ---------------- Init ---------------- */
+  fetchCategories().then(categories => {
+    categoriesCache = categories;
+    const select = document.getElementById("food-category");
+    categories.forEach(c => select.innerHTML += `<option value="${c.CategoryID}">${c.Name}</option>`);
+    renderFoodItems();
+  });
+
+  renderPackages();
+  renderOrders();
+</script>
+</body>
+</html>

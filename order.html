@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catering Hub - Place an Order</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="logo">Catering Hub</div>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="menu.html">Menu &amp; Packages</a></li>
+    <li><a href="order.html" class="active">Order</a></li>
+    <li><a href="admin-login.html">Admin</a></li>
+  </ul>
+</nav>
+
+<section class="section">
+  <h2 class="section-title">Catering Request</h2>
+  <form class="form-wrapper" id="order-form">
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" required>
+        <div class="form-error">Full name is required.</div>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+        <div class="form-error">A valid email is required.</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" required>
+        <div class="form-error">Phone number is required.</div>
+      </div>
+      <div class="form-group">
+        <label for="eventDate">Event Date</label>
+        <input type="date" id="eventDate" required>
+        <div class="form-error">Please choose a future date.</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="location">Event Location</label>
+        <input type="text" id="location" required>
+        <div class="form-error">Event location is required.</div>
+      </div>
+      <div class="form-group">
+        <label for="guests">Number of Guests</label>
+        <input type="number" id="guests" min="1" required>
+        <div class="form-error">Enter at least 1 guest.</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="package">Select Package</label>
+      <select id="package">
+        <option value="">-- Choose a package --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="notes">Additional Requirements</label>
+      <textarea id="notes" rows="4" placeholder="Dietary needs, setup preferences, etc."></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit Request</button>
+  </form>
+
+  <div class="form-wrapper" id="confirmation" style="display:none; margin-top:20px; text-align:center;">
+    <h3>Thank you! Your request has been received.</h3>
+    <p>Order reference: <strong id="order-ref"></strong></p>
+    <p>Status: <span class="status status-pending">Pending</span></p>
+  </div>
+</section>
+
+<footer>
+  <p>Catering Hub &copy; 2026 | Contact: info@cateringhub.com | +92 300 0000000</p>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  const packageSelect = document.getElementById("package");
+  fetchPackages().then(packages => {
+    packages.forEach(pkg => {
+      packageSelect.innerHTML += `<option value="${pkg.PackageID}">${pkg.Name} - $${pkg.Price}</option>`;
+    });
+    // Pre-select package if navigated from menu.html?package=ID
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("package")) packageSelect.value = params.get("package");
+  });
+
+  const form = document.getElementById("order-form");
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    let valid = true;
+
+    form.querySelectorAll("input[required]").forEach(input => {
+      const errorEl = input.parentElement.querySelector(".form-error");
+      if (!input.value.trim()) {
+        errorEl.style.display = "block";
+        valid = false;
+      } else {
+        errorEl.style.display = "none";
+      }
+    });
+
+    if (!valid) return;
+
+    const order = {
+      customerName: document.getElementById("fullName").value,
+      email: document.getElementById("email").value,
+      phone: document.getElementById("phone").value,
+      eventDate: document.getElementById("eventDate").value,
+      location: document.getElementById("location").value,
+      guests: document.getElementById("guests").value,
+      packageId: packageSelect.value || null,
+      notes: document.getElementById("notes").value
+    };
+
+    submitOrder(order)
+      .then(saved => {
+        document.getElementById("order-ref").textContent = "ORD-" + saved.orderId;
+        form.style.display = "none";
+        document.getElementById("confirmation").style.display = "block";
+      })
+      .catch(err => alert("Could not submit order: " + err.message));
+  });
+</script>
+</body>
+</html>
